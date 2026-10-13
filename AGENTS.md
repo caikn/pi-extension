@@ -26,5 +26,5 @@ Monorepo of Pi extensions/packages (`context-breakdown/`, `pi-pstack/`). Rules b
 
 ## Verify
 
-- `pi-pstack`: `pnpm typecheck` and `pnpm test`.
+- `pi-pstack`: `tsc --noEmit` (typecheck) and `bun test` + the `bun tests/*-contract.ts` scripts (run via `npm run test`). `check:pack` uses `pnpm pack --dry-run`.
 - Try a package without installing: `pi -e ./<package>`.
