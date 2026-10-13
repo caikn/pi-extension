@@ -1,0 +1,19 @@
+{
+  "name": "context-breakdown",
+  "version": "0.1.0",
+  "description": "Pi extension: /context command showing a per-category estimate of context-window usage.",
+  "type": "module",
+  "keywords": [
+    "pi-package",
+    "pi-extension"
+  ],
+  "license": "MIT",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
