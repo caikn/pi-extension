@@ -6,21 +6,51 @@ Pi's footer shows only the aggregate (tokens / window / percent). This splits th
 
 ## Example output
 
+In TUI mode the command opens a bordered overlay with two columns:
+
 ```
-Context breakdown (estimates):
-  system: skills                    8,210 tok
-  conversation: assistant text      5,430 tok
-  system: tool definitions          3,900 tok
-  conversation: tool results        3,120 tok
-  conversation: user                2,050 tok
-  system: project                   1,440 tok
-  system: preamble                    980 tok
-  system: cwd                         210 tok
-  estimated sum                    25,340 tok
-  provider total                   26,112 tok  (20.4% of 128,000)
+╭──────────────── Context Usage ─────────────────╮
+│ ■■■·················  Claude Sonnet 4.6         │
+│ ····················  (bfm) (1m context)        │
+│ ····················  anthropic--claude-4.6-... │
+│ ····················                            │
+│ ····················  11K/1m tokens (1.1%)      │
+│ ····················                            │
+│ ····················  Estimated usage by cat.   │
+│ ····················  ◆ System prompt: 3.4K ... │
+│ ··········⊠⊠⊠⊠⊠⊠⊠⊠⊠⊠  ◈ System tools: 4.9K ...  │
+│ ⊠⊠⊠⊠⊠⊠⊠⊠⊠⊠⊠⊠⊠⊠⊠⊠⊠⊠⊠⊠  ◇ System context: 2.5K ... │
+│                        ◉ Skills: 412 tokens     │
+│                        ◎ Messages: 0 tokens     │
+│                        □ Free space: 839K       │
+│                        ⊠ Autocompact buffer: ...│
+│  any key to close                               │
+╰─────────────────────────────────────────────────╯
 ```
 
-Bucket names come straight from the transcript. The `system: <tag>` rows are whatever named sections Pi tagged (`skills`, `project`, `cwd`, and so on), so the set depends on what is loaded.
+(`·` stands for the dim free-space `□` cell.)
+
+**LEFT**: a 20×10 grid "memory map" of the context window. Cells fill in order: each category as a colored `■`, then free space as dim `□`, then the autocompact buffer as `⊠` (warning color) occupying the final cells.
+
+**RIGHT legend**: model name and provider, used/window tokens and percent, then one line per segment with icon and token count.
+
+In non-TUI (json/print) mode a plain-text summary is shown via notify instead.
+
+## Categories and colors
+
+| Icon | Category | Source buckets | Color |
+|------|----------|----------------|-------|
+| ◆ | System prompt | `system: preamble` | accent |
+| ◈ | System tools | `system: tool definitions` | mdCode |
+| ◇ | System context | all other `system: *` | mdLink |
+| ◉ | Skills | `system: skills` | success |
+| ◎ | Messages | all `conversation: *` + `summaries` | toolOutput |
+| □ | Free space | window − used − buffer | dim |
+| ⊠ | Autocompact buffer | `compaction.reserveTokens` (default 16384) | warning |
+
+## Grid dimensions
+
+The grid is always 20 columns × 10 rows = 200 cells. Each segment gets cells proportional to its share of the total context window.
 
 ## How it works
 
@@ -28,10 +58,11 @@ Bucket names come straight from the transcript. The `system: <tag>` rows are wha
 - Buckets each piece: system preamble, each named system section, tool definitions (`toolsAdded`), and the conversation by role (user, assistant text, assistant thinking, tool calls, tool results, bash, custom, summaries).
 - System sections use the transcript's replace-by-name semantics, so the report reflects the current effective prompt, not every historical revision.
 - Estimates tokens as `ceil(chars / 4)` and counts each image as ~4800 chars, matching Pi's own heuristic.
+- The autocompact buffer is resolved from `pi.getSettings().compaction` with per-model override support.
 
 ## Accuracy
 
-Per-section numbers are estimates. The only exact figure is the `provider total` line, which comes from the provider's reported usage via `ctx.getContextUsage()`. Providers bill one lump, so a per-section split can never be exact. Right after a compaction, before the next model response, the provider total reads `unknown` because Pi cannot yet trust a usage number.
+Per-section numbers are estimates. The only exact figure is the used-token count when the provider has reported it via `ctx.getContextUsage()`. Providers bill one lump, so a per-section split can never be exact. Right after a compaction, before the next model response, the used count falls back to the estimated bucket sum.
 
 ## Install
 
