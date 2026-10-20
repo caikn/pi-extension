@@ -1,10 +1,10 @@
 # pi-pstack
 
-A pi-mimir fork of [pstack](https://github.com/cursor/plugins/tree/main/pstack). It keeps all upstream skills that are platform-portable (49; `make-bot-ui` is Cursor-platform-only and excluded, and `setup-pstack` is ported as a pi-native per-role model map), the sticky Poteto Mode, and the bundled `poteto-agent` and `comment-sicko` agents. It delegates through the native [pi-subagents](https://www.npmjs.com/package/pi-subagents) `subagent` tool rather than shipping its own child-Pi runner.
+A Pi port of [pstack](https://github.com/cursor/plugins/tree/main/pstack), based on [pi-mimir](https://github.com/casualjim/pi-mimir). It keeps all upstream skills that are platform-portable (49; `make-bot-ui` is Cursor-platform-only and excluded, and `setup-pstack` is ported as a pi-native per-role model map), the sticky Poteto Mode, and the bundled `poteto-agent` and `comment-sicko` agents. It delegates through the native [pi-subagents](https://www.npmjs.com/package/pi-subagents) `subagent` tool rather than shipping its own child-Pi runner.
 
 ## Why this fork exists
 
-Upstream pstack is a Cursor plugin that registers its own `subagent` tool and child-process runner. On Pi the `subagent` tool already exists, provided by pi-subagents. This fork drops the upstream tool registration so the native `subagent` is the only one, and pstack's bundled agents become inputs to it.
+This port replaces pi-mimir's subagent package with the native [pi-subagents](https://www.npmjs.com/package/pi-subagents) extension. Pstack's bundled agents are discovered by pi-subagents, which owns the `subagent` tool and child execution. This package does not ship a separate child-Pi runner.
 
 ## How delegation works here
 
@@ -74,4 +74,6 @@ To run without approval prompts, set `confirmExternalActions` to `false` in the 
 
 ## License and provenance
 
-Derived from Cursor's pstack, licensed under MIT. See [LICENSE](LICENSE).
+Thanks to [casualjim's pi-mimir](https://github.com/casualjim/pi-mimir) for the Pi adaptation this port builds on, and to [Cursor's pstack](https://github.com/cursor/plugins/tree/main/pstack) for the original skills and workflows.
+
+Derived from Cursor's pstack and pi-mimir, licensed under MIT. See [LICENSE](LICENSE).

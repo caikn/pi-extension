@@ -63,6 +63,10 @@ pi -e ./pi-pstack            # pstack only
 
 Local installs reference the cloned directories. Keep the checkout in place and use `git pull` to update it.
 
+## Thanks
+
+Thanks to [casualjim's pi-mimir](https://github.com/casualjim/pi-mimir) for the Pi port of [pstack](https://github.com/cursor/plugins/tree/main/pstack). This repository builds on that work and replaces pi-mimir's subagent package with the native [pi-subagents](https://www.npmjs.com/package/pi-subagents) extension.
+
 ## License
 
 MIT
