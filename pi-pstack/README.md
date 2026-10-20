@@ -25,7 +25,7 @@ Select a child model per call with `model: "provider/id"`, or omit `model` to in
 - 49 skills under `skills/`, matching the upstream inventory minus Cursor-only `make-bot-ui` (prose adapted where Pi differs). Two skills are renamed from upstream to avoid colliding with common user-global skills: `tdd` → `tdd-bug-fix` and `teach` → `explain`. Internal cross-references (e.g. the `bug-fix` playbook pointing at `tdd-bug-fix`) are updated to match.
 - `poteto-agent` and `comment-sicko` agent definitions under `agents/`, discovered by pi-subagents via `package.json` `pi.subagents.agents`.
 - Commands: `/poteto-mode` (sticky Poteto Mode for the session) and `/setup-pstack` (the interactive per-role model map wizard).
-- Tools: none. Task tracking, session recall, and subagent delegation use the host environment (`set_tasks` family, `recall`, the native `subagent` tool).
+- Tools: none. Task tracking, session recall, and subagent delegation use the host environment (a todolist, `recall`, the native `subagent` tool).
 
 Running the test suite (`npm test`) requires [bun](https://bun.sh).
 
@@ -44,7 +44,7 @@ The map lives at `$PI_CODING_AGENT_DIR/pstack/models.json` when that env var is 
 
 Two buckets group the roles. The `code` bucket covers `feature`, `refactoring`, `bug-fix`, `perf-issue`, `hillclimb`, `arena-runners`, `swarm-workers`, `why-investigators`, `how-explorer`. The `judgment` bucket covers `architect-runners`, `cross-judge`, `reflect-judgment`, `reflect-tooling`, `interrogate-reviewers`, `why-synthesizer`, `how-explainer`.
 
-Resolution for a role is `roles[role]`, then `buckets[bucket(role)]`, then inherit-parent. The literal values `inherit-parent` and `auto` mean inherit-parent. A slug may carry a native `:level` thinking suffix (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). A missing or malformed `models.json` injects nothing, so unconfigured roles inherit the parent model.
+Resolution for a role is `roles[role]`, then `buckets[bucket(role)]`, then inherit-parent. At the role level, the literal values `inherit-parent` and `auto` are treated as unset and fall through to the bucket. They do not bypass a pinned bucket. At the bucket level, these aliases leave the bucket unpinned. Omit `model` only when resolution yields no configured slug. A slug may carry a native `:level` thinking suffix (`off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`). A missing or malformed `models.json` injects nothing, so unconfigured roles inherit the parent model.
 
 The extension injects one grouped line listing each pinned bucket with the roles that still fall back to it, then any fine-role overrides. A role with its own override is dropped from its bucket's list and shown only under overrides, so no role is double-listed, and a bucket whose every role is overridden is omitted entirely. Unrecognized `roles.*` or `buckets.*` keys (a hand-edited typo like `roles.swarm-worker`) are ignored but logged once per session to a console warning, so a bad edit is not lost in silence.
 
@@ -55,7 +55,7 @@ The native per-call `model` (omit to inherit the parent) and the Pi setting `sub
 ## What's removed vs upstream
 
 - The upstream `subagent` tool and its child-Pi process runner. Use the native pi-subagents `subagent` instead.
-- The `pstack_config`, `pstack_todo`, and `pstack_sessions` tools. Task tracking and session recall use the host environment (`set_tasks` family, `recall`).
+- The `pstack_config`, `pstack_todo`, and `pstack_sessions` tools. Task tracking and session recall use the host environment (a todolist, `recall`).
 
 ## What's renamed vs upstream
 

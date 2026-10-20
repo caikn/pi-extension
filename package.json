@@ -1,0 +1,33 @@
+{
+  "name": "@caikn/pi-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pi extensions for context breakdown and pstack workflows, skills, and agents.",
+  "type": "module",
+  "license": "MIT",
+  "keywords": ["pi-package", "pi-extension", "pi", "pstack"],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/caikn/pi-extension.git"
+  },
+  "pi": {
+    "extensions": [
+      "./context-breakdown/index.ts",
+      "./pi-pstack/extensions/pstack/index.ts"
+    ],
+    "skills": ["./pi-pstack/skills"],
+    "subagents": {
+      "agents": ["./pi-pstack/agents"]
+    }
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  },
+  "scripts": {
+    "test": "node --test tests/package.test.mjs && bun test context-breakdown && npm --prefix pi-pstack test"
+  }
+}
