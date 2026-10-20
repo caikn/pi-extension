@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
@@ -27,6 +27,27 @@ test("poteto-mode keeps portable frontmatter and resolvable bundled references",
   const principles = [...section(skill, "Principles").matchAll(/\(\*\*(principle-[a-z-]+)\*\*\)/g)];
   assert.equal(principles.length, 24);
   for (const [, name] of principles) assert.ok(existsSync(join(root, "skills", name!, "SKILL.md")), `missing ${name}`);
+});
+
+test("playbook paths resolve from the skill directory, never the package root", () => {
+  assert.match(skill, /Resolve `playbooks\/`, `references\/`, and `scripts\/` paths relative to the directory containing this `SKILL\.md`, not the package root or working directory/);
+  assert.match(skill, /`<skill-dir>\/playbooks\/investigation\.md`/);
+  assert.ok(existsSync(join(skillDir, "playbooks/investigation.md")));
+  assert.ok(!existsSync(join(root, "playbooks/investigation.md")));
+});
+
+test("playbook reference paths consistently use the skill directory", () => {
+  let references = 0;
+  for (const file of readdirSync(join(skillDir, "playbooks"))) {
+    if (!file.endsWith(".md")) continue;
+    const body = readFileSync(join(skillDir, "playbooks", file), "utf8");
+    assert.doesNotMatch(body, /`\.\.\/(?:references|playbooks|scripts)\//, `${file} uses a playbook-relative base`);
+    for (const [, path] of body.matchAll(/`(references\/[^`]+)`/g)) {
+      assert.ok(existsSync(join(skillDir, path!)), `${file} references missing ${path}`);
+      references++;
+    }
+  }
+  assert.ok(references >= 5, "triage references must remain covered");
 });
 
 test("one todolist reads Principles before verbatim playbook steps", () => {

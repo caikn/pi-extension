@@ -5,7 +5,7 @@
  * holds when enabled. Runs under the package's `test` script (`bun tests/…`).
  */
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -30,6 +30,7 @@ function startExtension(): { events: Map<string, unknown>; commands: Set<string>
     return () => { };
    },
   },
+  appendEntry(_type: string, _data: unknown) {},
   registerCommand(name: string, _definition: unknown) {
    commands.add(name);
   },
@@ -107,6 +108,30 @@ assert.equal(resolvePstackConfigFile("pi", {}), join(homedir(), ".pi", "agent", 
 
   const beforeAgent = events.get("before_agent_start") as (event: { systemPrompt: string }) => unknown;
   assert.equal(beforeAgent({ systemPrompt: "base" }), undefined, "no injection when guard enabled and poteto mode off");
+
+  const enable = events.get("input") as (event: { text: string }) => unknown;
+  enable({ text: "/skill:poteto-mode investigate" });
+  const injectMode = beforeAgent as (event: { systemPrompt: string }) => { systemPrompt: string } | undefined;
+  const assertPlaybookBase = (prompt: string) => {
+   const match = /The playbooks directory is ([^\n]+?)\. Resolve/.exec(prompt);
+   assert.ok(match, "sticky mode must inject the absolute playbooks directory");
+   const playbooks = match[1]!;
+   assert.ok(existsSync(join(playbooks, "investigation.md")), "injected base resolves the reported missing playbook");
+   assert.ok(prompt.includes(`For example, read ${join(playbooks, "investigation.md")}`));
+  };
+  const active = injectMode({ systemPrompt: "base" });
+  assert.ok(active);
+  assertPlaybookBase(active.systemPrompt);
+
+  const restored = startExtension();
+  const restore = restored.events.get("session_start") as (event: unknown, ctx: unknown) => void;
+  restore({}, { hasUI: false, sessionManager: { getBranch: () => [
+   { type: "custom", customType: "pstack-mode", data: { enabled: true } },
+  ] } });
+  const restoredInject = restored.events.get("before_agent_start") as typeof injectMode;
+  const restoredPrompt = restoredInject({ systemPrompt: "base" });
+  assert.ok(restoredPrompt);
+  assertPlaybookBase(restoredPrompt.systemPrompt);
 
   mkdirSync(join(dir, "pstack"), { recursive: true });
   writeFileSync(join(dir, "pstack", "config.json"), '{"confirmExternalActions":false}', "utf8");

@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Poteto mode
 
+Resolve `playbooks/`, `references/`, and `scripts/` paths relative to the directory containing this `SKILL.md`, not the package root or working directory. For example, `playbooks/investigation.md` means `<skill-dir>/playbooks/investigation.md`, where `<skill-dir>` is the parent directory of this file's absolute path.
+
 Bundled skills live at `../<name>/SKILL.md` from this file, so put this file's absolute path in every `poteto-agent` prompt.
 
 ## Non-negotiables

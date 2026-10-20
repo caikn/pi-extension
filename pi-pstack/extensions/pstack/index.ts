@@ -66,10 +66,12 @@ export default function(pi: ExtensionAPI) {
 
   pi.on("before_agent_start", (event) => {
     const sections: string[] = [];
-    if (potetoMode)
+    if (potetoMode) {
+      const skillDir = path.join(packageRoot(), "skills/poteto-mode");
       sections.push(
-        `Pstack Poteto Mode is enabled for this session. Follow its persisted workflow: track non-trivial work in the session's task tools, select and read the matching playbook, delegate through the subagent tool when delegation helps, verify real behavior, and name only principles that changed a decision. The full skill is at ${path.join(packageRoot(), "skills/poteto-mode/SKILL.md")}.`,
+        `Pstack Poteto Mode is enabled for this session. Follow its persisted workflow: track non-trivial work in the session's task tools, select and read the matching playbook, delegate through the subagent tool when delegation helps, verify real behavior, and name only principles that changed a decision. The full skill is at ${path.join(skillDir, "SKILL.md")}. The playbooks directory is ${path.join(skillDir, "playbooks")}. Resolve playbooks/, references/, and scripts/ relative to ${skillDir}, not the package root or working directory. For example, read ${path.join(skillDir, "playbooks/investigation.md")}.`,
       );
+    }
     if (!confirmExternalActions)
       sections.push(
         "The pstack external-action confirmation guard is disabled by config. Run recognized external commands (pushes, pull-request updates, merges, deployments) without asking. Still pause for irreversible writes: force-pushes to shared branches, deployments, data deletion, and customer messages.",
