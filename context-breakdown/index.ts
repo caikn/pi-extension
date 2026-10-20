@@ -1,11 +1,20 @@
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { CompactionSettings, ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
+import type { Focusable } from "@earendil-works/pi-tui";
+import { visibleWidth } from "@earendil-works/pi-tui";
+import {
+  buildGrid,
+  buildLegendLines,
+  consolidate,
+  formatPercent,
+  formatTokens,
+  resolveBuffer,
+  type CellSpec,
+  type LegendLine,
+  type ModelInfo,
+} from "./context-display.js";
 
-/** Matches Pi's own heuristic: ~4 chars per token. */
-const CHARS_PER_TOKEN = 4;
 /** Matches Pi's ESTIMATED_IMAGE_CHARS so image-heavy context is not undercounted. */
 const IMAGE_CHARS = 4800;
-
-const tokens = (chars: number): number => Math.ceil(chars / CHARS_PER_TOKEN);
 
 function contentChars(content: unknown): number {
   if (typeof content === "string") return content.length;
@@ -30,10 +39,8 @@ function add(buckets: Buckets, key: string, chars: number): void {
 }
 
 /**
- * Fold the transcript into character buckets. System sections are resolved with
- * the transcript's own replace-by-name semantics (a later message's section
- * value replaces an earlier one; null removes it) so the result reflects the
- * current effective prompt, not every historical revision.
+ * Fold the transcript into character buckets. System sections use replace-by-name semantics
+ * so the result reflects the current effective prompt, not every historical revision.
  */
 function collectBuckets(messages: ReadonlyArray<Record<string, unknown>>): Buckets {
   const buckets: Buckets = new Map();
@@ -96,7 +103,6 @@ function collectBuckets(messages: ReadonlyArray<Record<string, unknown>>): Bucke
     }
   }
 
-  // Fold the resolved system pieces into named buckets.
   add(buckets, "system: preamble", preambleChars);
   add(buckets, "system: tool definitions", toolChars);
   for (const [tag, value] of sections) add(buckets, `system: ${tag}`, value.length);
@@ -104,8 +110,96 @@ function collectBuckets(messages: ReadonlyArray<Record<string, unknown>>): Bucke
   return buckets;
 }
 
-function pad(text: string, width: number): string {
-  return text.length >= width ? text : text + " ".repeat(width - text.length);
+const GRID_COLS = 20;
+const GRID_ROWS = 10;
+
+class ContextUsageOverlay implements Focusable {
+  readonly width: number;
+  focused = false;
+
+  private readonly grid: CellSpec[][];
+  private readonly legendLines: LegendLine[];
+  private readonly theme: Theme;
+  private readonly done: () => void;
+
+  constructor(
+    theme: Theme,
+    done: () => void,
+    grid: CellSpec[][],
+    legendLines: LegendLine[],
+    width: number,
+  ) {
+    this.theme = theme;
+    this.done = done;
+    this.grid = grid;
+    this.legendLines = legendLines;
+    this.width = width;
+  }
+
+  handleInput(_data: string): void {
+    this.done();
+  }
+
+  render(_width: number): string[] {
+    const th = this.theme;
+    const w = this.width;
+    const innerW = w - 2;
+    const lines: string[] = [];
+
+    const pad = (s: string, len: number) => {
+      const vis = visibleWidth(s);
+      return s + " ".repeat(Math.max(0, len - vis));
+    };
+
+    const row = (content: string) =>
+      th.fg("border", "│") + pad(content, innerW) + th.fg("border", "│");
+
+    const titleText = " Context Usage ";
+    const borderLen = innerW - visibleWidth(titleText);
+    const leftDash = Math.floor(borderLen / 2);
+    const rightDash = borderLen - leftDash;
+    lines.push(
+      th.fg("border", "╭" + "─".repeat(leftDash)) +
+        th.fg("accent", titleText) +
+        th.fg("border", "─".repeat(rightDash) + "╮"),
+    );
+
+    const gridWidth = GRID_COLS;
+
+    const maxRows = Math.max(this.grid.length, this.legendLines.length);
+    for (let r = 0; r < maxRows; r++) {
+      let content = " ";
+
+      const gridRow = this.grid[r];
+      if (gridRow) {
+        for (const cell of gridRow) {
+          content += th.fg(cell.colorToken, cell.glyph);
+        }
+      } else {
+        content += " ".repeat(gridWidth);
+      }
+
+      content += "  ";
+
+      const legendLine = this.legendLines[r];
+      if (legendLine) {
+        for (const part of legendLine.parts) {
+          content += part.colorToken ? th.fg(part.colorToken, part.text) : part.text;
+        }
+      }
+
+      lines.push(row(content));
+    }
+
+    lines.push(row(""));
+    lines.push(row(" " + th.fg("dim", "any key to close")));
+    lines.push(th.fg("border", "╰" + "─".repeat(innerW) + "╯"));
+
+    return lines;
+  }
+
+  invalidate(): void {}
+  dispose(): void {}
 }
 
 export default function (pi: ExtensionAPI) {
@@ -121,32 +215,45 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      const rows = [...buckets.entries()]
-        .map(([key, chars]) => [key, tokens(chars)] as const)
-        .sort((a, b) => b[1] - a[1]);
-
-      const estTotal = rows.reduce((sum, [, tok]) => sum + tok, 0);
-      const keyWidth = Math.max(...rows.map(([key]) => key.length), 12);
-
-      const lines = rows.map(
-        ([key, tok]) => `  ${pad(key, keyWidth)}  ${tok.toLocaleString().padStart(9)} tok`,
-      );
-      lines.push(`  ${pad("estimated sum", keyWidth)}  ${estTotal.toLocaleString().padStart(9)} tok`);
-
       const usage = ctx.getContextUsage();
-      if (usage) {
-        const window = usage.contextWindow.toLocaleString();
-        if (usage.tokens === null)
-          lines.push(`  ${pad("provider total", keyWidth)}  ${"unknown".padStart(9)}     (window ${window}; recompute pending)`);
-        else {
-          const pct = usage.percent === null ? "?" : usage.percent.toFixed(1);
-          lines.push(
-            `  ${pad("provider total", keyWidth)}  ${usage.tokens.toLocaleString().padStart(9)} tok  (${pct}% of ${window})`,
-          );
-        }
+      const model = ctx.model as ModelInfo | undefined;
+      const settings = pi.getSettings();
+      const compaction: CompactionSettings = settings.compaction ?? {};
+      const buffer = resolveBuffer(model, compaction);
+
+      const data = consolidate(buckets, usage, model, buffer);
+
+      if (ctx.mode !== "tui") {
+        const used = formatTokens(data.used);
+        const win = formatTokens(data.window);
+        const pct = formatPercent(data.used, data.window);
+        const catLines = data.segments
+          .filter((s) => s.tokens > 0)
+          .map((s) => `  ${s.icon} ${s.label}: ${formatTokens(s.tokens)} tokens (${formatPercent(s.tokens, data.window)})`)
+          .join("\n");
+        ctx.ui.notify(
+          `Context Usage: ${used}/${win} tokens (${pct})\n\nEstimated usage by category:\n${catLines}`,
+          "info",
+        );
+        return;
       }
 
-      ctx.ui.notify(["Context breakdown (estimates):", ...lines].join("\n"), "info");
+      const grid = buildGrid(data.segments, data.window, GRID_COLS, GRID_ROWS);
+      const legendLines = buildLegendLines(data.segments, data.used, data.window, model);
+
+      const overlayWidth = Math.min(
+        80,
+        GRID_COLS + 3 + Math.max(...legendLines.map((l) => visibleWidth(l.text))) + 4,
+      );
+
+      await ctx.ui.custom(
+        (_tui, theme, _kb, done) =>
+          new ContextUsageOverlay(theme, () => done(undefined), grid, legendLines, overlayWidth),
+        {
+          overlay: true,
+          overlayOptions: { anchor: "center", width: overlayWidth },
+        },
+      );
     },
   });
 }
