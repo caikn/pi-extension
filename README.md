@@ -11,6 +11,28 @@ Each package has its own `README.md` and `package.json`. See those for usage.
 
 ## Installation
 
+### From Git
+
+Install both packages directly from the repository's `main` branch:
+
+```bash
+pi install git:github.com/caikn/pi-extension@main
+pi install npm:pi-subagents
+```
+
+The repository package exposes both extensions, pstack skills, and bundled agents. `pi-subagents` provides the native delegation tool.
+
+The explicit `@main` ref is pinned by Pi's update policy. Re-run the install command to refresh it from `main`. To follow the repository's default branch through `pi update`, install without an explicit ref instead:
+
+```bash
+pi install git:github.com/caikn/pi-extension
+pi update git:github.com/caikn/pi-extension
+```
+
+Choose one installation method. Do not also install the subpackages locally, which would load duplicate extensions and skills.
+
+### From a local checkout
+
 Clone this repository, then install the packages you want with Pi:
 
 ```bash
@@ -34,8 +56,9 @@ Installs above apply to your user configuration. Add `--local` to a `pi install`
 To try a package for one session without installing it, run from the repository root:
 
 ```bash
-pi -e ./context-breakdown
-pi -e ./pi-pstack
+pi -e .                     # both packages
+pi -e ./context-breakdown    # context breakdown only
+pi -e ./pi-pstack            # pstack only
 ```
 
 Local installs reference the cloned directories. Keep the checkout in place and use `git pull` to update it.
