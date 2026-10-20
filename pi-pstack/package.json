@@ -1,9 +1,9 @@
 {
-  "name": "@casualjim/pi-pstack",
+  "name": "@caikn/pi-pstack",
   "version": "0.1.13",
   "description": "Pi-native fork of pstack skills, Poteto Mode, and bundled agents. Delegates through the native pi-subagents `subagent` tool.",
   "license": "MIT",
-  "author": "casualjim",
+  "author": "caikn",
   "keywords": [
     "pi-package",
     "pi",
@@ -27,7 +27,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/casualjim/pi-mimir"
+    "url": "https://github.com/caikn/pi-extension.git",
+    "directory": "pi-pstack"
   },
   "pi": {
     "extensions": [
